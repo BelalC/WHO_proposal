@@ -1,7 +1,7 @@
 library(shiny)
 
-load("data/africa.RDA")
-load("data/europe.RDA")
+X <- readRDS("data/africa_data")
+Y <- readRDS("data/europe_data")
 
 # Define server logic required to plot various variables against mpg
 shinyServer(function(input, output) {
