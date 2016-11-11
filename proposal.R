@@ -1,6 +1,5 @@
 setwd('~/Documents/Coursera/data_incubator/challenge_proposal/')
 
-
 library(WHO)
 library(dplyr)
 library(magrittr)
@@ -17,8 +16,6 @@ library(dygraphs)
 
 codes <- get_codes()
 
-child_codes <- codes[grepl("[Cc]hild", codes$display), ]
-
 ### INFANT MORTALITY DATA - WHO
 mdg_codes <- codes[grepl("^MDG", codes$label), ]
 mdg_codes$number <- as.numeric(str_sub(mdg_codes$label, start = -2))
@@ -26,24 +23,57 @@ mdg_codes$number <- as.numeric(str_sub(mdg_codes$label, start = -2))
 mdg1 <- get_data("MDG_0000000001")
 
 ### LIFE EXPECTANCY DATA - WHO
-df <- get_data("WHOSIS_000001")
-df1 = df[df$region=="Africa",]
+life_expectancy <- get_data("WHOSIS_000001")
+life_expectancy <- life_expectancy[life_expectancy$region==c("Africa","Europe"),]
+
+### Water + Air DATA - WHO
+
+water_1 <- get_data("WSH_1")
+water_1 <- water_1[water_1$region==c("Africa","Europe"),]
+
+water_1K <- get_data("WSH_3")
+water_1K <- water_1K[water_1K$region==c("Africa","Europe"),]
+
+water_daly <- get_data("WSH_7")
+water_daly <- water_daly[water_daly$region==c("Africa","Europe"),]
+
+air_1 <- get_data("AIR_5")
+air_1 <- air_1[air_1$region==c("Africa","Europe"),]
+
+nam = unique(water_1K$country) 
+nam_2 = income$country
+names = nam[(nam %in% nam_2)]
+
+water_1K = water_1K[water_1K$country %in% names,]
+water_1K = data.frame(water_1K)
+
+for (i in 1:nrow(water_1K)){
+    water_1K[i,7] = income[water_1K[i,3] == income$country,1]
+}
+
+#
+nam = unique(air_1$country) 
+nam_2 = income$country
+names = nam[(nam %in% nam_2)]
+
+air_1K <- air_1[air_1$country %in% names,]
+air_1K <- data.frame(air_1K)
+
+for (i in 1:nrow(air_1K)){
+    air_1K[i,7] = income[air_1K[i,3] == income$country,1]
+}
+
 
 ####### EDUCATION DATA - downloaded from Wittgenstein Centre for Demography & Global Human Capital
 
-africa_a = read.csv('./wicdf (7).csv', row.names = NULL, skip = 8, header = T)
-africa_b = read.csv('./wicdf (8).csv', row.names = NULL, skip = 8, header = T)
-
-africa = read.csv('../project_idea/wicdf (5).csv', row.names = NULL, skip = 8, header = T)
 world = read.csv('../project_idea/wicdf (6).csv', row.names = NULL, skip = 8, header = T)
-europe_b = africa_b = read.csv('./wicdf (9).csv', row.names = NULL, skip = 8, header = T)
 
-africa_cut = africa[africa$Year<=2015,]
-africa_cut = africa_cut[africa_cut$Year>=1990,]
+africa_b = read.csv('data/wicdf (8).csv', row.names = NULL, skip = 8, header = T)
+europe_b = read.csv('data/wicdf (9).csv', row.names = NULL, skip = 8, header = T)
 
 #income grouping - derived from WHO data
 
-income = mdg1[,4:5]
+income = mdg1[,c(1,5)]
 income = income[!duplicated(income$country),]
 income = data.frame(income)
 income = na.omit(income)
@@ -92,21 +122,13 @@ df1 %>%
          linetype = NULL, color = NULL,
          title = "Evolution of life expectancy (by region)\n")
 
-subset(world, world$Education=="Post Secondary") %>% 
+# world education attainment
+subset(world, world$Education=="Upper Secondary") %>% 
     group_by(Education, Area) %>%
     ggplot(aes(x = Year, y = Distribution, color = Area, linetype = Area)) +
     geom_line(size = 1) +
     theme_light(9) +
-    labs(x = NULL, y = "school attainment\n", 
-         linetype = NULL, color = NULL,
-         title = "Education\n")
-
-africa_cut %>% 
-    group_by(Education) %>%
-    ggplot(aes(x = Year, y = Distribution, color = Education, linetype = Education)) +
-    geom_line(size = 1) +
-    theme_light(9) +
-    labs(x = NULL, y = "school attainment\n", 
+    labs(x = NULL, y = "primary school attainment\n", 
          linetype = NULL, color = NULL,
          title = "Education\n")
 
@@ -131,8 +153,20 @@ boxplot( (subset(X$Distribution, X$Education=="Post Secondary"))~subset(X$income
 
 Y = europe_b_cut[europe_b_cut$Education!="Total",]
 
-boxplot( (subset(Y$Distribution, Y$Education=="Primary"))~subset(Y$incomegroup, Y$Education=="Primary"), horizontal = TRUE)
-boxplot( (subset(Y$Distribution, Y$Education=="Under 15"))~subset(Y$incomegroup, Y$Education=="Under 15"))
-boxplot( (subset(Y$Distribution, Y$Education=="Lower Secondary"))~subset(Y$incomegroup, Y$Education=="Lower Secondary"))
-boxplot( (subset(Y$Distribution, Y$Education=="Upper Secondary"))~subset(Y$incomegroup, Y$Education=="Upper Secondary"))
-boxplot( (subset(Y$Distribution, Y$Education=="Post Secondary"))~subset(Y$incomegroup, Y$Education=="Post Secondary"))
+boxplot( (subset(Y$Distribution, Y$Education=="Primary"))~subset(Y$incomegroup, Y$Education=="Primary"), horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("European primary education attainement ")
+boxplot((subset(Y$Distribution, Y$Education=="Lower Secondary"))~subset(Y$incomegroup, Y$Education=="Lower Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+         title("European lower secondary school education attainement ")
+boxplot( (subset(Y$Distribution, Y$Education=="Upper Secondary"))~subset(Y$incomegroup, Y$Education=="Upper Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("European upper secondary school education attainement ")
+boxplot( (subset(Y$Distribution, Y$Education=="Post Secondary"))~subset(Y$incomegroup, Y$Education=="Post Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("European post secondary school education attainement")
+
+boxplot( (subset(X$Distribution, X$Education=="Primary"))~subset(X$incomegroup, X$Education=="Primary"), horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("African primary education attainement ")
+boxplot((subset(X$Distribution, X$Education=="Lower Secondary"))~subset(X$incomegroup, X$Education=="Lower Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("African lower secondary school education attainement ")
+boxplot( (subset(X$Distribution, X$Education=="Upper Secondary"))~subset(X$incomegroup, X$Education=="Upper Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("African upper secondary school education attainement ")
+boxplot( (subset(X$Distribution, X$Education=="Post Secondary"))~subset(X$incomegroup, X$Education=="Post Secondary"),horizontal = TRUE, ylab = "WHO-defined income", xlab = "Percentage achieved")
+title("African post secondary school education attainement")
